@@ -95,7 +95,7 @@ def DoBlastn(QueryDB):
 	#Blastn search commandline
 	MakeBlastn(QueryPath, DB, NameOutBlast, QueryDB[2])
 	
-#Do blastn search
+#Do blastx search
 def DoBlastx(QueryDB):
 	'''Parse list of query, database and evalue then do blastx search.
 	Argument: List (ex: [query, database, evalue]
@@ -243,6 +243,7 @@ def ParseBlastWGS(BlastFilePath):
 				DicoB = {}
 				DicoB["Query id"] = qresult.id
 				DicoB["% identity"] = IdtPercentage
+				DicoB["Hit id"] = qresult.hits[0].id
 				Dico4Blast.append(DicoB)
 	ListIdDico.append(Dico4Blast)
 	return(ListIdDico)
@@ -404,23 +405,28 @@ if __name__ == '__main__':
 	#Parse blast files 
 	BlastFileWGS = glob.glob(ArgsDico['input']+"/BlastWGS/*")
 	ResultsBlastWGS = p.map(ParseBlastWGS, BlastFileWGS)
-	#Need a new directory for final selected sequence dataset
+		#Need a new directory for final selected sequence dataset
 	os.mkdir(ArgsDico['input']+"/Final_AllSelectedSequences")
+	# To retrieve WGS sequences
+	WGSIdList = []
 	for BlastWGS in ResultsBlastWGS:
 		TransNameSpeList = BlastWGS[0].split("_")
 		TransNameSpe = TransNameSpeList[0]
 		del BlastWGS[0]
-		#To obtain % identity:
-		IdentityDico = BlastWGS[-1]
+		#To obtain % identity and WGS hit:
+		AllDico = BlastWGS[-1]
 		del BlastWGS[-1]
-		DicoList = [] 
+		# To retrieve WGS sequences
+		for Dico in AllDico:
+			WGSIdList.append(Dico["Hit id"])
+		# To retrieve selected sequences from transcriptome
 		print("Retrieve sequence in fasta file")
 		DicoTransFa = ExtractFromFa(ArgsDico['input']+"/TranscriptomeHomologues/"+TransNameSpe+"_SelectedSeq.fasta")
 		#Find selected sequence with id
 		print("find selected sequence")
 		SelectedSeqs = FindInfoInFa(BlastWGS, DicoTransFa)
 		for SelectedSeq in SelectedSeqs:
-			for Dico in IdentityDico:
+			for Dico in AllDico:
 				if SelectedSeq["Id"] == Dico["Query id"]:
 					SelectedSeq["% identity"] = Dico["% identity"]
 					SelectedSeq["Length Sequence"] = len(str(SelectedSeq["Sequence"]))
@@ -433,4 +439,16 @@ if __name__ == '__main__':
 		for SeqDico in SortSelectedSeqs:
 			OutputSelected.write(">"+str(SeqDico["Name"])+"\n"+str(SeqDico["Sequence"])+"\n")
 		OutputSelected.close()
-
+	# To retrieve WGS sequences
+	# Do not repeat id => unique
+	WGSIdListArray = numpy.array(WGSIdList)
+	WGSIdListArrayUnique = numpy.unique(WGSIdListArray)
+	WGSIdListOne = WGSIdListArrayUnique.tolist()
+	print("Retrieve WGS sequence in fasta file")
+	DicoWGSFa = ExtractFromFa(ArgsDico["database"])
+	WGSSeq = FindInfoInFa(WGSIdListOne, DicoWGSFa)
+	# Write sequences in file
+	OutWGS = open(ArgsDico['input']+"/Final_AllSelectedSequences/WGS_sequences.fasta","w")
+	for SeqDico in WGSSeq:
+		OutWGS.write(">"+str(SeqDico["Name"])+"\n"+str(SeqDico["Sequence"])+"\n")
+	OutWGS.close()
