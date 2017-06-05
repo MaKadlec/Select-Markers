@@ -53,3 +53,5 @@
       #		AllCandidatesInfo.txt (exon length, predicted length including introns, percentage identity per candidate marker)
       #		Candidates.fasta: Candidate markers (complete sequences) in fasta format
       #		CandidateCodingRegionSe.fasta: Candidate marker coding regions in fasta format
+      
+# Examples Files (Input and output files) are available at https://github.com/MaKadlec/Select-Markers-Examples-files
